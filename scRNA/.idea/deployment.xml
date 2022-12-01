@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="ryrl@10.20.35.105:22 password (2)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+    <option name="confirmBeforeUploading" value="false" />
+    <serverData>
+      <paths name="pcwang@10.20.35.100:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/mnt/data/pcwang/remote/projects/scRNA" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ryrl@10.20.35.105:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/public/workspace/ryrl/idea/scRNA/dhsu" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

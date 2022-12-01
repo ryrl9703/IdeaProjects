@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="SimGNN-master">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/MechineLearning/class/gcn/SimGNN-master.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

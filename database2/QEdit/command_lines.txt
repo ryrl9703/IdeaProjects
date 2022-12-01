@@ -1,0 +1,76 @@
+#GTEx samples used in this study have been downloaded from dbGAP (through the dbGaP authorized access system), study: phs000424, consent group: GRU.  
+#Download the cerebellum sample with accession SRR607967 from GTEx project in fastq format. 
+#Pre-process fastq reads
+#Run FASTQC for quality check
+fastqc SRR607967_1.fastq SRR607967_2.fastq
+#Run FASTP for fastq trimming
+fastp -i SRR607967_1.fastq -I SRR607967_2.fastq -o SRR607967_1.trimmed.fastq -O SRR607967_2.trimmed.fastq --detect_adapter_for_pe
+-x -q 25 -n 1 -l 50 -y -w 8
+#Download Human Genome Primary Assembly version hg38
+wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_32/GRCh38.primary_assembly.genome.fa.gz
+gunzip ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_32/GRCh38.primary_assembly.genome.fa.gz
+#Download Human Genome Primary Assembly version hg19
+wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_32/GRCh37_mapping/GRCh37.primary_assembly.genome.fa.gz
+gunzip ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_32/GRCh37_mapping/GRCh37.primary_assembly.genome.fa.gz
+#Download Gene annotations for hg38
+wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_31/gencode.v31.primary_assembly.annotation.gtf.gz
+#Download Gene annotations for hg19
+wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_31/GRCh37_mapping/gencode.v31lift37.annotation.gtf.gz
+#Select main chromosomes only in fasta and gtf
+GRCh38.primary_assembly.genome.CHR.fa
+GRCh37.primary_assembly.genome.CHR.fa
+gencode.v31.annotation.CHR.gtf
+gencode.v31lift37.annotation.CHR.gtf
+#Index hg38 genome for bwa
+bwa index -p hg38 /lustrehome/epicardi/stardb/GRCh38.primary_assembly.genome.CHR.fa
+#Index hg19 genome for bwa
+bwa index -p hg19 /lustrehome/epicardi/stardb/GRCh37.primary_assembly.genome.CHR.fa
+#Index hg38 genome for STAR
+STAR --outFileNamePrefix hg38CHR --runMode genomeGenerate --runThreadN 10 --genomeDir hg38gencodev31_CHR_75 --genomeFastaFiles GRCh38.primary_assembly.genome.CHR.fa --sjdbGTFfile gencode.v31.annotation.CHR.gtf --sjdbOverhang 75
+#Index hg19 genome for STAR
+STAR --outFileNamePrefix hg19CHR --runMode genomeGenerate --runThreadN 10 --genomeDir hg19gencodev31_CHR_75 --genomeFastaFiles GRCh37.primary_assembly.genome.CHR.fa --sjdbGTFfile gencode.v31lift37.annotation.CHR.gtf --sjdbOverhang 75
+#BWA mapping
+bwa mem -Y -t 10 hg19 SRR607967_1.fastq SRR607967_2.fastq > SRR607967_hg19_bwa.sam
+bwa mem -Y -t 10 hg19 SRR607967_1.trimmed.fastq SRR607967_2.trimmed.fastq > SRR607967_hg19_bwa_trimmed.sam
+bwa mem -Y -t 10 hg38 SRR607967_1.fastq SRR607967_2.fastq > SRR607967_hg38_bwa.sam
+bwa mem -Y -t 10 hg38 SRR607967_1.trimmed.fastq SRR607967_2.trimmed.fastq > SRR607967_hg38_bwa_trimmed.sam
+samtools view -b -@ 10 -o SRR607967_hg19_bwa.tmp.bam SRR607967_hg19_bwa.sam
+samtools view -b -@ 10 -o SRR607967_hg19_bwa_trimmed.tmp.bam SRR607967_hg19_bwa_trimmed.sam
+samtools view -b -@ 10 -o SRR607967_hg38_bwa.tmp.bam SRR607967_hg38_bwa.sam
+samtools view -b -@ 10 -o SRR607967_hg38_bwa_trimmed.tmp.bam SRR607967_hg38_bwa_trimmed.sam
+samtools sort -@ 10 -o SRR607967_hg19_bwa.bam SRR607967_hg19_bwa.tmp.bam
+samtools sort -@ 10 -o SRR607967_hg19_bwa_trimmed.bam SRR607967_hg19_bwa_trimmed.tmp.bam
+samtools sort -@ 10 -o SRR607967_hg38_bwa.bam SRR607967_hg38_bwa.tmp.bam
+samtools sort -@ 10 -o SRR607967_hg38_bwa_trimmed.bam SRR607967_hg38_bwa_trimmed.tmp.bam
+samtools index -@ 10 SRR607967_hg19_bwa.bam
+samtools index -@ 10 SRR607967_hg19_bwa_trimmed.bam
+samtools index -@ 10 SRR607967_hg38_bwa.bam
+samtools index -@ 10 SRR607967_hg38_bwa_trimmed.bam
+rm *.tmp.bam
+rm *.sam
+#STAR mapping
+STAR --twopassMode Basic --runThreadN 10 --genomeDir hg19gencodev31_CHR_75 --genomeLoad NoSharedMemory --outFileNamePrefix SRR607967_hg19_star_ --outReadsUnmapped Fastx --outSAMtype BAM SortedByCoordinate --outSAMstrandField intronMotif --outSAMattributes All --outFilterType BySJout --outFilterMultimapNmax 1 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterMismatchNmax 999 --outFilterMismatchNoverLmax 0.04 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --readFilesIn SRR607967_1.fastq SRR607967_2.fastq
+STAR --twopassMode Basic --runThreadN 10 --genomeDir hg19gencodev31_CHR_75 --genomeLoad NoSharedMemory --outFileNamePrefix SRR607967_hg19_star_trimmed_ --outReadsUnmapped Fastx --outSAMtype BAM SortedByCoordinate --outSAMstrandField intronMotif --outSAMattributes All --outFilterType BySJout --outFilterMultimapNmax 1 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterMismatchNmax 999 --outFilterMismatchNoverLmax 0.04 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --readFilesIn SRR607967_1.trimmed.fastq SRR607967_2.trimmed.fastq
+STAR --twopassMode Basic --runThreadN 10 --genomeDir hg38gencodev31_CHR_75 --genomeLoad NoSharedMemory --outFileNamePrefix SRR607967_hg38_star_ --outReadsUnmapped Fastx --outSAMtype BAM SortedByCoordinate --outSAMstrandField intronMotif --outSAMattributes All --outFilterType BySJout --outFilterMultimapNmax 1 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterMismatchNmax 999 --outFilterMismatchNoverLmax 0.04 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --readFilesIn SRR607967_1.fastq SRR607967_2.fastq
+STAR --twopassMode Basic --runThreadN 10 --genomeDir hg38gencodev31_CHR_75 --genomeLoad NoSharedMemory --outFileNamePrefix SRR607967_hg38_star_trimmed_ --outReadsUnmapped Fastx --outSAMtype BAM SortedByCoordinate --outSAMstrandField intronMotif --outSAMattributes All --outFilterType BySJout --outFilterMultimapNmax 1 --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterMismatchNmax 999 --outFilterMismatchNoverLmax 0.04 --alignIntronMin 20 --alignIntronMax 1000000 --alignMatesGapMax 1000000 --readFilesIn SRR607967_1.trimmed.fastq SRR607967_2.trimmed.fastq
+#Run REDItools
+reditools.py -S -o SRR607967_hg19_bwa.edi -f SRR607967_hg19_bwa.bam -s 0 -r GRCh37.primary_assembly.genome.CHR.fa -m homo-hg19_1 -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+reditools.py -S -o SRR607967_hg19_bwa_trimmed.edi -f SRR607967_hg19_bwa_trimmed.bam -s 0 -r GRCh37.primary_assembly.genome.CHR.fa -m homo-hg19_1 -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+reditools.py -S -o SRR607967_hg38_bwa.edi -f SRR607967_hg38_bwa.bam -s 0 -r GRCh38.primary_assembly.genome.CHR.fa -m homo-hg38_1 -c -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+reditools.py -S -o SRR607967_hg38_bwa_trimmed.edi -f SRR607967_hg38_bwa_trimmed.bam -s 0 -r GRCh38.primary_assembly.genome.CHR.fa -m homo-hg38_1 -c -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+reditools.py -S -o SRR607967_hg19_star.edi -f SRR607967_hg19_star_Aligned.sortedByCoord.out.bam -s 0 -r GRCh37.primary_assembly.genome.CHR.fa -m homo-hg19_1 -c -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+reditools.py -S -o SRR607967_hg19_star_trimmed.edi -f SRR607967_hg19_star_trimmed_Aligned.sortedByCoord.out.bam
+-s 0 -r GRCh37.primary_assembly.genome.CHR.fa -m homo-hg19_2 -c -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+reditools.py -S -o SRR607967_hg38_star.edi -f SRR607967_hg38_star_Aligned.sortedByCoord.out.bam -s 0 -r GRCh38.primary_assembly.genome.CHR.fa -m homo-hg38_1 -c -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+reditools.py -S -o SRR607967_hg38_star_trimmed.edi -f SRR607967_hg38_star_trimmed_Aligned.sortedByCoord.out.bam
+-s 0 -r GRCh38.primary_assembly.genome.CHR.fa -m homo-hg38_2 -c -mrl 50 -q 30 -bq 30 -mbp 5 -Mbp 5 -l 10 -men 2 -me 2
+#Run JACUSA
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg19_bwa_jac.edi -R -p 8 SRR607967_hg19_bwa.bam
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg19_bwa_trimmed_jac.edi -R -p 8 SRR607967_hg19_bwa_trimmed.bam
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg19_star_jac.edi -R -p 8 SRR607967_hg19_star_Aligned.sortedByCoord.out.bam
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg19_star_trimmed_jac.edi -R -p 8 SRR607967_hg19_star_trimmed_Aligned.sortedByCoord.out.bam
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg38_bwa_jac.edi -R -p 8 SRR607967_hg38_bwa.bam
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg38_bwa_trimmed_jac.edi -R -p 8 SRR607967_hg38_bwa_trimmed.bam
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg38_star_jac.edi -R -p 8 SRR607967_hg38_star_Aligned.sortedByCoord.out.bam
+java -jar JACUSA_v1.3.0.jar call-1 -a Y:5 -c 10 -q 30 -r SRR607967_hg38_star_trimmed_jac.edi -R -p 8 SRR607967_hg38_star_trimmed_Aligned.sortedByCoord.out.bam
+
